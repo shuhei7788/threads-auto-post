@@ -17,6 +17,12 @@ export async function run({ account, env = process.env, root = ROOT, client, log
   const postsDir = path.join(accountDir, "posts");
   const stateFile = path.join(accountDir, "state.json");
 
+  const dryRun = env.DRY_RUN === "1";
+  // 確認モードでもトークンがあれば接続だけ確かめる（投稿はしない）
+  if (!dryRun || env.THREADS_TOKEN || client) client ??= createClient({ token: env.THREADS_TOKEN });
+  const me = client ? await client.me() : null;
+  if (me) log(`[${account}] @${me.username} に接続できました`);
+
   const folders = await listPostFolders(postsDir);
   const state = await readState(stateFile);
   const name = pickNext(folders, state.last);
@@ -37,15 +43,13 @@ export async function run({ account, env = process.env, root = ROOT, client, log
 
   log(`[${account}] 次の投稿: ${name}（写真${post.images.length}枚）`);
 
-  if (env.DRY_RUN === "1") {
+  if (dryRun) {
     log(post.text || "（文章なし）");
     for (const url of imageUrls) log(`  写真: ${url}`);
     return { posted: false, name };
   }
 
-  client ??= createClient({ token: env.THREADS_TOKEN });
-  const { id: userId } = await client.me();
-  const postId = await client.publish(userId, { text: post.text, imageUrls });
+  const postId = await client.publish(me.id, { text: post.text, imageUrls });
 
   await writeState(stateFile, { last: name, postedAt: now().toISOString(), postId });
   log(`[${account}] 投稿しました: ${name}`);

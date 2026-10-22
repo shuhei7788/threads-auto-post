@@ -23,8 +23,10 @@ function fakeClient() {
   const calls = [];
   return {
     calls,
+    meCalls: 0,
     async me() {
-      return { id: "42" };
+      this.meCalls++;
+      return { id: "42", username: "donut" };
     },
     async publish(userId, post) {
       calls.push({ userId, ...post });
@@ -84,10 +86,26 @@ test("日本語のフォルダ名や写真名はURLエンコードする", async
 test("DRY_RUN では投稿も保存もしない", async () => {
   const root = await setup({ "001": { "text.txt": "a" } });
   const client = fakeClient();
-  const result = await run({ account: "donut", env: { ...env, DRY_RUN: "1" }, root, client, log: quiet });
+  const logs = [];
+  const result = await run({ account: "donut", env: { ...env, DRY_RUN: "1" }, root, client, log: (m) => logs.push(m) });
   assert.equal(result.posted, false);
   assert.equal(client.calls.length, 0);
+  assert.equal(client.meCalls, 1);
+  assert.ok(logs.includes("[donut] @donut に接続できました"));
   await assert.rejects(readFile(path.join(root, "accounts/donut/state.json")));
+});
+
+test("DRY_RUN でトークンがなければ接続チェックを飛ばす", async () => {
+  const root = await setup({ "001": { "text.txt": "a" } });
+  const result = await run({ account: "donut", env: { ...env, DRY_RUN: "1" }, root, log: quiet });
+  assert.equal(result.name, "001");
+});
+
+test("投稿がなくても DRY_RUN で接続を確認できる", async () => {
+  const root = await setup({});
+  const client = fakeClient();
+  await run({ account: "donut", env: { ...env, DRY_RUN: "1" }, root, client, log: quiet });
+  assert.equal(client.meCalls, 1);
 });
 
 test("投稿がなければ何もしない", async () => {
