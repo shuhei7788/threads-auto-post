@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com; img-src 'self' blob: data: https://raw.githubusercontent.com; style-src 'self'; script-src 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>投稿ダッシュボード</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>投稿ダッシュボード</h1>
+    <button id="logout" class="link" hidden>ログアウト</button>
+  </header>
+
+  <main>
+    <section id="login" hidden>
+      <div class="card">
+        <h2>はじめに</h2>
+        <p>このダッシュボードは、GitHub のトークンを使って投稿を編集します。トークンはこのブラウザの中にだけ保存されます。</p>
+        <ol class="steps">
+          <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成画面</a>を開く</li>
+          <li>Token name に <code>dashboard</code>、Expiration は一番長い期間を選ぶ</li>
+          <li>Repository access で「Only select repositories」→ <code>threads-auto-post</code></li>
+          <li>Permissions の <b>Contents</b> を「Read and write」にする</li>
+          <li>「Generate token」を押し、表示された文字列を下に貼る</li>
+        </ol>
+        <form id="login-form">
+          <input id="token" type="password" autocomplete="off" placeholder="github_pat_..." required>
+          <button class="primary" type="submit">ログイン</button>
+        </form>
+        <p id="login-error" class="error" hidden></p>
+      </div>
+    </section>
+
+    <section id="app" hidden>
+      <nav class="tabs" id="tabs"></nav>
+
+      <div class="card summary">
+        <div><span class="label">投稿時刻</span><span id="sum-time"></span></div>
+        <div><span class="label">登録数</span><span id="sum-count"></span></div>
+        <div><span class="label">最後に投稿</span><span id="sum-last"></span></div>
+      </div>
+
+      <button id="add" class="primary block">＋ 新しい投稿を追加</button>
+
+      <p class="hint">上から順番に、1日1件ずつ投稿されます。最後まで行ったら最初に戻ります。</p>
+      <ol id="posts" class="posts"></ol>
+      <p id="empty" class="empty" hidden>まだ投稿が登録されていません。「新しい投稿を追加」から登録してください。</p>
+    </section>
+  </main>
+
+  <dialog id="editor">
+    <form method="dialog" id="editor-form">
+      <h2 id="editor-title">投稿を編集</h2>
+      <label for="text">文章</label>
+      <textarea id="text" rows="8" placeholder="投稿する文章"></textarea>
+      <div class="counter"><span id="count">0</span> / 500文字</div>
+
+      <label>写真（JPEG / PNG、20枚まで。左から順に表示されます）</label>
+      <ul id="images" class="images"></ul>
+      <label class="button file">
+        写真を追加
+        <input id="file" type="file" accept="image/jpeg,image/png,image/*" multiple>
+      </label>
+
+      <p id="editor-error" class="error" hidden></p>
+      <div class="actions">
+        <button value="cancel" formnovalidate>キャンセル</button>
+        <button id="save" class="primary" value="save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">保存しています…</p></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
