@@ -1,0 +1,11 @@
+{
+  "name": "threads-auto-post",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test",
+    "post": "node src/post.mjs",
+    "refresh": "node src/refresh.mjs"
+  }
+}

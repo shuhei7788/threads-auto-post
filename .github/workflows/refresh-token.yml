@@ -1,0 +1,38 @@
+name: トークン更新
+
+# Threadsのアクセストークンは60日で切れるので、毎週更新してGitHubの秘密設定に保存し直す。
+on:
+  schedule:
+    - cron: "17 0 * * 1" # 毎週月曜 9:17 JST ごろ
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - account: donut
+            secret: THREADS_TOKEN_DONUT
+          - account: ice
+            secret: THREADS_TOKEN_ICE
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: トークンを更新して保存
+        env:
+          THREADS_TOKEN: ${{ secrets[matrix.secret] }}
+          GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+          NEW_TOKEN_FILE: ${{ runner.temp }}/new-token
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "SECRETS_PAT が設定されていません"; exit 1; fi
+          node src/refresh.mjs
+          gh secret set "${{ matrix.secret }}" --repo "$GITHUB_REPOSITORY" < "$NEW_TOKEN_FILE"
+          rm -f "$NEW_TOKEN_FILE"

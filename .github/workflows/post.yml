@@ -1,0 +1,56 @@
+name: 自動投稿
+
+on:
+  schedule:
+    # 時刻はUTC（日本時間 -9時間）。GitHubの混雑で数分〜数十分遅れることがあるので少し早めにしている。
+    - cron: "50 1 * * *" # ドーナツ食べたい: 毎日 10:50 JST ごろ
+    - cron: "50 5 * * *" # アイス食べたい: 毎日 14:50 JST ごろ
+  workflow_dispatch:
+    inputs:
+      account:
+        description: アカウント
+        type: choice
+        options: [donut, ice]
+        required: true
+      dry_run:
+        description: 投稿せずに内容だけ確認する
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    env:
+      ACCOUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.account || (github.event.schedule == '50 1 * * *' && 'donut' || 'ice') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 投稿
+        env:
+          THREADS_TOKEN: ${{ env.ACCOUNT == 'donut' && secrets.THREADS_TOKEN_DONUT || secrets.THREADS_TOKEN_ICE }}
+          IMAGE_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node src/post.mjs "$ACCOUNT"
+
+      - name: 投稿済みの位置を保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "accounts/$ACCOUNT/state.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "posted: $ACCOUNT"
+          for i in 1 2 3; do
+            git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
