@@ -30,8 +30,8 @@ jobs:
     env:
       ACCOUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.account || (github.event.schedule == '50 1 * * *' && 'donut' || 'ice') }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
