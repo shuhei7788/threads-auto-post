@@ -4,7 +4,7 @@ on:
   schedule:
     # 毎時50分に起動し、投稿時刻（src/scheduled.mjs の SCHEDULE）を過ぎていて今日まだ投稿していないアカウントだけ投稿する。
     # GitHub の定時実行は遅れたり飛ばされたりするので、1回飛ばされても次の回で投稿される。
-    - cron: "50 * * * *"
+    - cron: "45 * * * *"
   workflow_dispatch:
     inputs:
       account:
