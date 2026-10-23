@@ -217,3 +217,32 @@ test("トークンの更新", async () => {
   assert.equal(requests[0].path, "/refresh_access_token");
   assert.equal(requests[0].params.grant_type, "th_refresh_token");
 });
+
+test("公開がまだ準備中で断られたら、待って再挑戦する", async () => {
+  const notReady = { ok: false, status: 400, body: { error: { message: "The requested resource does not exist", code: 24 } } };
+  const { fetch, requests } = fakeFetch([
+    { body: { id: "c1" } },
+    { body: { status: "FINISHED" } },
+    notReady,
+    notReady,
+    { body: { id: "p1" } },
+  ]);
+  const sleeps = [];
+  const client = createClient({ token: "t", fetch, sleep: async (ms) => sleeps.push(ms), publishRetryMs: 7 });
+  assert.equal(await client.publish("42", { text: "hi", imageUrls: ["https://x/a.jpg"] }), "p1");
+  assert.equal(requests.filter((r) => r.path.endsWith("/threads_publish")).length, 3);
+  assert.deepEqual(sleeps, [7, 7]);
+});
+
+test("公開の再挑戦は6回までで、別のエラーはすぐに失敗にする", async () => {
+  const notReady = { ok: false, status: 400, body: { error: { message: "The requested resource does not exist", code: 24 } } };
+  const { fetch } = fakeFetch([{ body: { id: "c1" } }, { body: { status: "FINISHED" } }, ...Array(6).fill(notReady)]);
+  const client = createClient({ token: "t", fetch, sleep: async () => {} });
+  await assert.rejects(client.publish("42", { text: "hi", imageUrls: [] }), /does not exist \(code 24\)/);
+
+  const other = { ok: false, status: 400, body: { error: { message: "Invalid parameter", code: 100 } } };
+  const f2 = fakeFetch([{ body: { id: "c1" } }, { body: { status: "FINISHED" } }, other]);
+  const client2 = createClient({ token: "t", fetch: f2.fetch, sleep: async () => {} });
+  await assert.rejects(client2.publish("42", { text: "hi", imageUrls: [] }), /Invalid parameter/);
+  assert.equal(f2.requests.length, 3);
+});

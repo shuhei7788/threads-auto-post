@@ -4,7 +4,13 @@ const VERSION = "v1.0";
 
 export class ThreadsError extends Error {}
 
-export function createClient({ token, fetch = globalThis.fetch, sleep = defaultSleep, pollIntervalMs = 5000, pollTimeoutMs = 300000 }) {
+// 準備完了の直後に公開すると「見つからない」と断られることがあるので、待って再挑戦する
+const PUBLISH_RETRIES = 6;
+
+export function createClient({
+  token, fetch = globalThis.fetch, sleep = defaultSleep,
+  pollIntervalMs = 5000, pollTimeoutMs = 300000, publishRetryMs = 10000,
+}) {
   if (!token) throw new ThreadsError("アクセストークンが設定されていません");
 
   async function call(method, pathname, params = {}) {
@@ -19,8 +25,10 @@ export function createClient({ token, fetch = globalThis.fetch, sleep = defaultS
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
-      const message = data.error?.message ?? `HTTP ${res.status}`;
-      throw new ThreadsError(`Threads API エラー (${method} ${pathname.replace(/\d{6,}/g, "<id>")}): ${message}`);
+      const message = data.error ? `${data.error.message} (code ${data.error.code})` : `HTTP ${res.status}`;
+      const err = new ThreadsError(`Threads API エラー (${method} ${pathname.replace(/\d{6,}/g, "<id>")}): ${message}`);
+      err.code = data.error?.code;
+      throw err;
     }
     return data;
   }
@@ -72,8 +80,16 @@ export function createClient({ token, fetch = globalThis.fetch, sleep = defaultS
         }));
       }
       await waitUntilReady(containerId);
-      const { id } = await call("POST", `${VERSION}/${userId}/threads_publish`, { creation_id: containerId });
-      return id;
+      for (let attempt = 1; ; attempt++) {
+        try {
+          const { id } = await call("POST", `${VERSION}/${userId}/threads_publish`, { creation_id: containerId });
+          return id;
+        } catch (err) {
+          const notReady = err.code === 24 || /does not exist/i.test(err.message);
+          if (!notReady || attempt >= PUBLISH_RETRIES) throw err;
+          await sleep(publishRetryMs);
+        }
+      }
     },
 
     // 長期トークン（60日）を更新する。発行から24時間以上経ち、期限内のトークンが対象。
