@@ -60,6 +60,21 @@ GitHub の「Actions」→「自動投稿」→「Run workflow」で、アカウ
 
 アクセストークンは60日で切れますが、「トークン更新」の仕組みが毎週月曜に自動で更新します。
 
+## 毎時の起動（cron-job.org）
+
+GitHub の定時実行は3〜5時間おきになることがあるので、[cron-job.org](https://cron-job.org) から毎時45分に「自動投稿」を `account=auto` で起動しています。
+GitHub の定時実行と重なっても、同じ日に2回投稿されることはありません。
+
+| 項目 | 設定 |
+|---|---|
+| URL | `https://api.github.com/repos/shuhei7788/threads-auto-post/actions/workflows/post.yml/dispatches` |
+| 方法 | POST |
+| ヘッダー | `Accept: application/vnd.github+json` / `Authorization: Bearer <トークン>` / `X-GitHub-Api-Version: 2022-11-28` / `Content-Type: application/json` |
+| 本文 | `{"ref":"main","inputs":{"account":"auto","dry_run":"false"}}` |
+| 実行 | 毎時45分（Asia/Tokyo） |
+
+トークンは、このリポジトリだけを対象に **Actions** を「Read and write」にした GitHub のトークンです（期限が切れたら作り直して差し替えます）。
+
 ## うまく動かないとき
 
 - 「Actions」の画面で失敗した実行（赤い×）を開くと、原因が日本語で表示されます。
