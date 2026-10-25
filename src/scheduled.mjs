@@ -10,7 +10,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // 投稿時刻（日本時間）
 export const SCHEDULE = { donut: "11:00", ice: "15:00" };
 const EARLY_MINUTES = 15; // この分だけ早く起動した回でも投稿する
-const CATCH_UP_MINUTES = 120; // 投稿時刻からこの分までは、取りこぼしを投稿する
+// 投稿時刻からこの分までは、取りこぼしを投稿する。GitHub の定時実行は3〜5時間おきになることもあるので広めにとる
+const CATCH_UP_MINUTES = 300;
 
 const JST_OFFSET = 9 * 60 * 60 * 1000;
 const jstDate = (d) => new Date(d.getTime() + JST_OFFSET).toISOString().slice(0, 10);

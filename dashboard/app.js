@@ -192,9 +192,12 @@ async function move(index, delta) {
 }
 
 async function setNext(post) {
-  const folders = view.posts.map((p) => p.folder);
-  const state = { ...view.state, last: lastFor(folders, post.folder) };
   await busy("保存しています…", async () => {
+    // 画面を開いたあとに自動投稿が state.json を更新していることがあるので、最新を読み直してから変える
+    await refresh();
+    const folders = view.posts.map((p) => p.folder);
+    if (!folders.includes(post.folder)) throw new Error("この投稿は削除されています。画面を読み込み直してください");
+    const state = { ...view.state, last: lastFor(folders, post.folder) };
     await commit(`${current}: 次の投稿を変更`, [{ path: `accounts/${current}/state.json`, text: JSON.stringify(state, null, 2) + "\n" }]);
     await refresh();
     toast("次に投稿する内容を変更しました");
